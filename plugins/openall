@@ -1,17 +1,26 @@
 #!/usr/bin/env bash
 
-# Description: Open selected files in nuke one by one or in oneshot
+# Description: Open selected files 
 #
 # Notes: 1. Opens the hovered file if the selection is empty
-#        2. nuke is the default, set OPENER below for custom
-#        3. Opener is invoked once for each file in a loop
-#        4. Keep pressing "Enter" to open files one by one
+#        2. Tries to oepn with $EDITOR, falls back to nuke
+#        3. If $EDITOR is vi or vim, open files in tabs
+#           Else: Opener is invoked once for each file in a loop
+#           Keep pressing "Enter" to open files one by one
 #
 # Shell: bash
-# Author: Arun Prakash Jana
+
 
 sel=${NNN_SEL:-${XDG_CONFIG_HOME:-$HOME/.config}/nnn/.selection}
-OPENER="${XDG_CONFIG_HOME:-$HOME/.config}/nnn/plugins/nuke"
+
+if [[ -z "$EDITOR" ]]; then
+    # Default editor
+    OPENER="${XDG_CONFIG_HOME:-$HOME/.config}/nnn/plugins/nuke"
+else
+    # Use $EDITOR if set
+    OPENER="$EDITOR"
+fi
+
 
 if [ -s "$sel" ]; then
     targets=()
@@ -25,19 +34,25 @@ if [ -s "$sel" ]; then
         # If there's only one file selected, open without prompts
         "$OPENER" "${targets[0]}"
     else
-        printf "open [A]ll? "
-        read -r all
+        # Open all files in tabs if editor is vim or vi
+        if [ "$OPENER" == "vim" ] || [ "$OPENER" == "vi" ]; then
+            $OPENER -p "${targets[@]}"
+        else
+            echo  
+            printf "open [A]ll? "
+            read -r all
 
-        for ((index=0; index <= ${#targets[@]}; index++)); do
-            "$OPENER" "${targets[index]}"
-            if [ "$all" != "A" ] && (( index+1 < elements )); then
-                printf "press Enter to open '%s'\n" "${targets[index+1]}"
-                read -r -s -n 1 key
-                if [[ $key != "" ]]; then
-                    break
+            for ((index=0; index <= ${#targets[@]}; index++)); do
+                "$OPENER" "${targets[index]}"
+                if [ "$all" != "A" ] && (( index+1 < elements )); then
+                    printf "press Enter to open '%s'\n" "${targets[index+1]}"
+                    read -r -s -n 1 key
+                    if [[ $key != "" ]]; then
+                        break
+                    fi
                 fi
+            done
             fi
-        done
     fi
 
     # Clear selection
